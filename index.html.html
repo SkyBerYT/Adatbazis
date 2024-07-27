@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magyar Rendorseg</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            background-color: #e8e8e8;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        #login-container, #register-container, #profile-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e8e8e8;
+        }
+        #login-box, #register-box, #profile-box {
+            background-color: white;
+            padding: 2rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #login-box input, #register-box input, #profile-box input {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #login-box button, #register-box button, #profile-box button {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: #0072ce;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #login-box button:hover, #register-box button:hover, #profile-box button:hover {
+            background-color: #005bb5;
+        }
+        #content, #dev-section {
+            display: none;
+        }
+        header {
+            background-color: #0072ce;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            position: relative;
+        }
+        header .menu {
+            display: flex;
+            justify-content: center;
+            background-color: #0072ce;
+            padding: 1rem;
+            color: white;
+        }
+        header .menu a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+        }
+        header .menu a:hover {
+            text-decoration: underline;
+        }
+        header .profile-link {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        main {
+            padding: 2rem;
+        }
+        footer {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+        #reports, #members {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #reports th, #reports td, #members th, #members td {
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+        }
+        #reports th, #members th {
+            background-color: #0072ce;
+            color: white;
+        }
+        .logo {
+            width: 100px;
+            margin-bottom: 1rem;
+        }
+        .admin-section {
+            display: none;
+        }
+        .delete-user-section {
+            display: none;
+        }
+        #profile-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 1rem;
+            background-color: #fff;
+        }
+        .report-actions {
+            display: flex;
+            justify-content: center;
+        }
+        .report-actions button {
+            margin-right: 0.5rem;
+        }
+    </style>
+    <script>
+        function loadUsers() {
+            const users = localStorage.getItem('users');
+            return users ? JSON.parse(users) : [];
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+
+        function loadReports() {
+            const reports = localStorage.getItem('reports');
+            return reports ? JSON.parse(reports) : [];
+        }
+
+        function saveReports(reports) {
+            localStorage.setItem('reports', JSON.stringify(reports));
+        }
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const users = loadUsers();
+            const user = users.find(user => user.username === username && user.password === password);
+
+            if (user) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('user-info').innerText = `Udv, ${user.name} (${user.rank})`;
+
+                if (user.isAdmin) {
+                    document.getElementById('admin-section').style.display = 'block';
+                } else {
+                    document.getElementById('admin-section').style.display = 'none';
+                }
+
+                displayReports();
+                displayMembers();
+            } else {
+                alert('Helytelen felhasznalonev vagy jelszo.');
+            }
+        }
+
+        function showRegister() {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('register-container').style.display = 'flex';
+        }
+
+        function register() {
+            const newUsername = document.getElementById('new-username').value;
+            const newPassword = document.getElementById('new-password').value;
+            const newName = document.getElementById('new-name').value;
+            const newPhone = document.getElementById('new-phone').value;
+            const newRank = document.getElementById('new-rank').value;
+
+            if (newUsername && newPassword && newName && newPhone && newRank) {
+                // Clear existing data
+                saveUsers([]);
+                saveReports([]);
+
+                const users = [{ 
+                    username: newUsername, 
+                    password: newPassword, 
+                    name: newName, 
+                    phone: newPhone, 
+                    rank: newRank, 
+                    isAdmin: true 
+                }];
+                saveUsers(users);
+
+                alert('Sikeres regisztracio! Most mar bejelentkezhetsz.');
+                document.getElementById('register-container').style.display = 'none';
+                document.getElementById('login-container').style.display = 'flex';
+            } else {
+                alert('Kerjuk, toltson ki az osszes mezot.');
+            }
+        }
+
+        function displayReports() {
+            const reports = loadReports();
+            const reportsTable = document.getElementById('reports-body');
+            reportsTable.innerHTML = '';
+            reports.forEach((report, index) => {
+                const row = document.createElement('tr');
+                const cellName = document.createElement('td');
+                const cellWriter = document.createElement('td');
+                const cellText = document.createElement('td');
+                cellName.innerText = report.name;
+                cellWriter.innerText = report.writer;
+                cellText.innerText = report.text;
+                row.appendChild(cellName);
+                row.appendChild(cellWriter);
+                row.appendChild(cellText);
+                
+                const cellActions = document.createElement('td');
+                const editButton = document.createElement('button');
+                editButton.innerText = 'Szerkeszt';
+                editButton.onclick = () => editReport(index);
+                cellActions.appendChild(editButton);
+
+                if (isAdmin() || report.writer === document.getElementById('username').value) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerText = 'Torles';
+                    deleteButton.onclick = () => deleteReport(index);
+                    cellActions.appendChild(deleteButton);
+                }
+                
+                row.appendChild(cellActions);
+                reportsTable.appendChild(row);
+            });
+        }
+
+        function addReport() {
+            const reportName = prompt('Ird be a jelentés nevet:');
+            const reportWriter = prompt('Ird be a jelentés irojat:');
+            const reportText = prompt('Ird be a jelentest:');
+            if (reportName && reportWriter && reportText) {
+                const reports = loadReports();
+                reports.push({ name: reportName, writer: reportWriter, text: reportText });
+                saveReports(reports);
+                displayReports();
+            }
+        }
+
+        function editReport(index) {
+            const reports = loadReports();
+            const report = reports[index];
+            const newText = prompt('Uj jelentés szoveg:', report.text);
+            if (newText !== null) {
+                report.text = newText;
+                saveReports(reports);
+                displayReports();
+            }
+        }
+
+        function deleteReport(index) {
+            const reports = loadReports();
+            reports.splice(index, 1);
+            saveReports(reports);
+            displayReports();
+        }
+
+        function deleteUser(username) {
+            let users = loadUsers();
+            users = users.filter(user => user.username !== username);
+            saveUsers(users);
+            alert('Felhasznalo torolve.');
+        }
+
+        function showAdminSection() {
+            document.getElementById('admin-section').style.display = 'block';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('members-section').style.display = 'none';
+            document.getElementById('profile-container').style.display = 'none';
+            document.getElementById('delete-user-section').style.display = 'none';
+        }
+
+        function showReports() {
+            document.getElementById('reports-section').style.display = 'block';
+            document.getElementById('members-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'none';
+            document.getElementById('profile-container').style.display = 'none';
+            document.getElementById('delete-user-section').style.display = 'none';
+        }
+
+        function showMembers() {
+            document.getElementById('members-section').style.display = 'block';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'none';
+            document.getElementById('profile-container').style.display = 'none';
+            document.getElementById('delete-user-section').style.display = 'none';
+            displayMembers();
+        }
+
+        function showProfile() {
+            document.getElementById('profile-container').style.display = 'flex';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('members-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'none';
+            document.getElementById('delete-user-section').style.display = 'none';
+            displayProfile();
+        }
+
+        function displayProfile() {
+            const username = document.getElementById('username').value;
+            const users = loadUsers();
+            const user = users.find(user => user.username === username);
+            if (user) {
+                document.getElementById('profile-name').value = user.name;
+                document.getElementById('profile-phone').value = user.phone;
+                document.getElementById('profile-username').value = user.username;
+                document.getElementById('profile-password').value = user.password;
+            }
+        }
+
+        function updateProfile() {
+            const username = document.getElementById('username').value;
+            const name = document.getElementById('profile-name').value;
+            const phone = document.getElementById('profile-phone').value;
+            const password = document.getElementById('profile-password').value;
+
+            let users = loadUsers();
+            users = users.map(user => {
+                if (user.username === username) {
+                    return { ...user, name, phone, password };
+                }
+                return user;
+            });
+            saveUsers(users);
+            alert('Profil sikeresen frissitve.');
+            showReports(); // Return to the reports view after updating profile
+        }
+
+        function showDeleteUser() {
+            document.getElementById('delete-user-section').style.display = 'block';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('members-section').style.display = 'none';
+            document.getElementById('profile-container').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'none';
+        }
+
+        function displayMembers() {
+            const users = loadUsers();
+            const membersTable = document.getElementById('members-body');
+            membersTable.innerHTML = '';
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                const cellName = document.createElement('td');
+                const cellRank = document.createElement('td');
+                const cellPhone = document.createElement('td');
+                cellName.innerText = user.name;
+                cellRank.innerText = user.rank;
+                cellPhone.innerText = user.phone;
+                row.appendChild(cellName);
+                row.appendChild(cellRank);
+                row.appendChild(cellPhone);
+                membersTable.appendChild(row);
+            });
+        }
+
+        function isAdmin() {
+            const username = document.getElementById('username').value;
+            const users = loadUsers();
+            const user = users.find(user => user.username === username);
+            return user ? user.isAdmin : false;
+        }
+    </script>
+</head>
+<body>
+    <div id="login-container">
+        <div id="login-box">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/1/11/Coa_Hungary_Town_Budapest_big.svg" alt="Magyar Rendorseg" class="logo">
+            <h2>Bejelentkezes</h2>
+            <input type="text" id="username" placeholder="Felhasznalonev">
+            <input type="password" id="password" placeholder="Jelszo">
+            <button onclick="login()">Bejelentkezes</button>
+            <button onclick="showRegister()">Regisztracio</button>
+        </div>
+    </div>
+    <div id="register-container" style="display: none;">
+        <div id="register-box">
+            <h2>Regisztracio</h2>
+            <input type="text" id="new-name" placeholder="Nev">
+            <input type="text" id="new-phone" placeholder="Telefonszam">
+            <input type="text" id="new-rank" placeholder="Rendfokozat">
+            <input type="text" id="new-username" placeholder="Felhasznalonev">
+            <input type="password" id="new-password" placeholder="Jelszo">
+            <button onclick="register()">Regisztracio</button>
+        </div>
+    </div>
+    <div id="profile-container" style="display: none;">
+        <div id="profile-box">
+            <h2>Profilom</h2>
+            <input type="text" id="profile-name" placeholder="Nev">
+            <input type="text" id="profile-phone" placeholder="Telefonszam">
+            <input type="text" id="profile-username" placeholder="Felhasznalonev" disabled>
+            <input type="password" id="profile-password" placeholder="Jelszo">
+            <button onclick="updateProfile()">Profil Frissites</button>
+        </div>
+    </div>
+    <div id="content">
+        <header>
+            <div class="menu">
+                <a href="#" onclick="showReports()">Jelentesek</a>
+                <a href="#" onclick="showMembers()">Tagok</a>
+                <a href="#" onclick="showProfile()" class="profile-link">Profilom</a>
+                <a href="#" onclick="showAdminSection()">Osztalyvezeto</a>
+            </div>
+            <h1>Magyar Rendorseg</h1>
+        </header>
+        <main>
+            <h2 id="user-info"></h2>
+            <div id="reports-section">
+                <h3>Jelentesek</h3>
+                <table id="reports">
+                    <thead>
+                        <tr>
+                            <th>Nev</th>
+                            <th>Jelentes Iroja</th>
+                            <th>Jelentes</th>
+                            <th>Akciok</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reports-body"></tbody>
+                </table>
+                <button onclick="addReport()">Jelentes iiras</button>
+            </div>
+            <div id="members-section" style="display: none;">
+                <h3>Tagok</h3>
+                <table id="members">
+                    <thead>
+                        <tr>
+                            <th>Nev</th>
+                            <th>Fokozat</th>
+                            <th>Telefonszam</th>
+                        </tr>
+                    </thead>
+                    <tbody id="members-body"></tbody>
+                </table>
+            </div>
+            <div id="admin-section" class="admin-section">
+                <h2>Adminisztracios Felulet</h2>
+                <button onclick="showDeleteUser()">Felhasznalok kezelese</button>
+            </div>
+        </main>
+        <footer>
+            <p>&copy; 2024 Magyar Rendorseg</p>
+        </footer>
+    </div>
+    <div id="delete-user-section" class="delete-user-section">
+        <h2>Felhasznalok kezelese</h2>
+        <button onclick="deleteUser('felhasznalo')">Felhasznalo torlese: felhasznalo</button>
+        <button onclick="deleteUser('veghmarcell')">Felhasznalo torlese: veghmarcell</button>
+    </div>
+</body>
+</html>
